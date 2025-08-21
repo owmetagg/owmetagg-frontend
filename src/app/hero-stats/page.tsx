@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Navbar } from '@/components/navigation/Navbar';
@@ -34,6 +34,11 @@ interface HeroStatsData {
   objTimePer10: number;
   healingPer10: number;
   gamesPlayed: number;
+}
+
+interface SortConfig {
+  column: string | null;
+  direction: 'asc' | 'desc' | null;
 }
 
 const columnLabels: Record<string, string> = {
@@ -83,9 +88,19 @@ const getRoleColor = (role: string) => {
 interface HeroStatsTableProps {
   data: HeroStatsData[];
   columns: string[];
+  sortConfig: SortConfig;
+  onSort: (column: string) => void;
 }
 
-const HeroStatsTable = ({ data, columns }: HeroStatsTableProps) => {
+const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTableProps) => {
+  const getSortIcon = (column: string) => {
+    if (sortConfig.column !== column) {
+      return <ChevronsUpDown className="h-4 w-4 text-gray-400" />;
+    }
+    return sortConfig.direction === 'asc' 
+      ? <ChevronUp className="h-4 w-4 text-gray-600" />
+      : <ChevronDown className="h-4 w-4 text-gray-600" />;
+  };
   return (
     <div className="bg-white rounded-lg border overflow-hidden">
       <div className="overflow-x-auto">
@@ -95,7 +110,13 @@ const HeroStatsTable = ({ data, columns }: HeroStatsTableProps) => {
               <th className="text-left py-4 px-6 font-medium text-gray-900 w-64">Hero</th>
               {columns.map(col => (
                 <th key={col} className="text-center py-4 px-8 font-medium text-gray-900 min-w-[120px]">
-                  {columnLabels[col]}
+                  <button
+                    onClick={() => onSort(col)}
+                    className="flex items-center justify-center gap-1 w-full hover:text-gray-700 transition-colors"
+                  >
+                    {columnLabels[col]}
+                    {getSortIcon(col)}
+                  </button>
                 </th>
               ))}
             </tr>
@@ -182,6 +203,12 @@ const HeroStatsPage = () => {
   const [heroData, setHeroData] = useState<HeroStatsData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    column: 'pickRate',
+    direction: 'desc'
+  });
+  
   // Navbar state
   const [activeSection, setActiveSection] = useState('hero-stats');
   const [isSearching, setIsSearching] = useState(false);
@@ -221,6 +248,20 @@ const HeroStatsPage = () => {
   const clearSearchHistory = () => {
     setSearchHistory([]);
     localStorage.removeItem('owmeta-search-history');
+  };
+
+  // Sorting handler
+  const handleSort = (column: string) => {
+    setSortConfig(prevConfig => {
+      if (prevConfig.column === column) {
+        // Same column clicked - toggle direction
+        const newDirection = prevConfig.direction === 'desc' ? 'asc' : 'desc';
+        return { column, direction: newDirection };
+      } else {
+        // New column clicked - start with descending (highest to lowest)
+        return { column, direction: 'desc' };
+      }
+    });
   };
 
   useEffect(() => {
@@ -272,8 +313,22 @@ const HeroStatsPage = () => {
       filtered = filtered.filter(hero => hero.role.toLowerCase() === filters.role.toLowerCase());
     }
     
-    return filtered.sort((a, b) => b.pickRate - a.pickRate);
-  }, [heroData, filters]);
+    // Apply sorting
+    if (sortConfig.column && sortConfig.direction) {
+      filtered.sort((a, b) => {
+        const aValue = a[sortConfig.column as keyof HeroStatsData] as number;
+        const bValue = b[sortConfig.column as keyof HeroStatsData] as number;
+        
+        if (sortConfig.direction === 'asc') {
+          return aValue - bValue;
+        } else {
+          return bValue - aValue;
+        }
+      });
+    }
+    
+    return filtered;
+  }, [heroData, filters, sortConfig]);
 
   const handleFilterChange = (key: keyof HeroFilters, value: string) => {
     setFilters(prev => ({
@@ -454,6 +509,8 @@ const HeroStatsPage = () => {
                   <HeroStatsTable 
                     data={filteredHeroData}
                     columns={['pickRate', 'winRate', 'kda']}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
                   />
                 )}
 
@@ -461,6 +518,8 @@ const HeroStatsPage = () => {
                   <HeroStatsTable 
                     data={filteredHeroData}
                     columns={['elimsPer10', 'damagePer10', 'objKillsPer10', 'objTimePer10', 'healingPer10']}
+                    sortConfig={sortConfig}
+                    onSort={handleSort}
                   />
                 )}
               </div>
