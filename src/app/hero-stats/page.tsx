@@ -85,6 +85,50 @@ const getRoleColor = (role: string) => {
   }
 };
 
+const getProgressBarColor = (column: string) => {
+  switch (column) {
+    case 'pickRate':
+      return 'bg-yellow-500';
+    case 'winRate':
+      return 'bg-green-500';
+    case 'kda':
+      return 'bg-blue-500';
+    case 'elimsPer10':
+    case 'damagePer10':
+      return 'bg-red-500';
+    case 'healingPer10':
+      return 'bg-green-500';
+    case 'objKillsPer10':
+    case 'objTimePer10':
+      return 'bg-purple-500';
+    default:
+      return 'bg-gray-500';
+  }
+};
+
+interface ProgressBarProps {
+  percentage: number;
+  color: string;
+  delay?: number;
+}
+
+const ProgressBar = ({ percentage, color, delay = 0 }: ProgressBarProps) => {
+  return (
+    <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
+      <motion.div
+        className={`h-full ${color} opacity-60 rounded-full`}
+        initial={{ width: 0 }}
+        animate={{ width: `${percentage}%` }}
+        transition={{ 
+          duration: 0.8, 
+          delay: delay,
+          ease: "easeOut"
+        }}
+      />
+    </div>
+  );
+};
+
 interface HeroStatsTableProps {
   data: HeroStatsData[];
   columns: string[];
@@ -100,6 +144,41 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
     return sortConfig.direction === 'asc' 
       ? <ChevronUp className="h-4 w-4 text-gray-600" />
       : <ChevronDown className="h-4 w-4 text-gray-600" />;
+  };
+
+  // Calculate relative percentages for each column
+  const getColumnPercentages = (column: string) => {
+    const values = data.map(hero => hero[column as keyof HeroStatsData] as number);
+    const maxValue = Math.max(...values);
+    const minValue = Math.min(...values);
+    
+    // For healing, treat 0 values specially (non-support heroes)
+    if (column === 'healingPer10') {
+      const nonZeroValues = values.filter(v => v > 0);
+      if (nonZeroValues.length === 0) return new Map();
+      
+      const maxNonZero = Math.max(...nonZeroValues);
+      const percentageMap = new Map();
+      
+      data.forEach(hero => {
+        const value = hero[column as keyof HeroStatsData] as number;
+        percentageMap.set(hero.heroKey, value === 0 ? 0 : (value / maxNonZero) * 100);
+      });
+      
+      return percentageMap;
+    }
+    
+    // For other stats, use standard normalization
+    const range = maxValue - minValue;
+    const percentageMap = new Map();
+    
+    data.forEach(hero => {
+      const value = hero[column as keyof HeroStatsData] as number;
+      const percentage = range === 0 ? 100 : ((value - minValue) / range) * 100;
+      percentageMap.set(hero.heroKey, percentage);
+    });
+    
+    return percentageMap;
   };
   return (
     <div className="bg-white rounded-lg border overflow-hidden">
@@ -163,11 +242,28 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
                       </div>
                     </div>
                   </td>
-                  {columns.map(col => (
-                    <td key={col} className="text-center py-4 px-8 text-gray-900 font-medium">
-                      {formatValue(col, hero[col as keyof HeroStatsData] as number)}
-                    </td>
-                  ))}
+                  {columns.map(col => {
+                    const percentages = getColumnPercentages(col);
+                    const percentage = percentages.get(hero.heroKey) || 0;
+                    const barColor = getProgressBarColor(col);
+                    
+                    return (
+                      <td key={col} className="text-center py-4 px-8 text-gray-900 font-medium">
+                        <div className="flex flex-col items-center">
+                          <span className="mb-1">
+                            {formatValue(col, hero[col as keyof HeroStatsData] as number)}
+                          </span>
+                          <div className="w-full max-w-[80px]">
+                            <ProgressBar 
+                              percentage={percentage}
+                              color={barColor}
+                              delay={index * 0.05}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                    );
+                  })}
                 </motion.tr>
               ))
             )}
