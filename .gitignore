@@ -61,14 +61,6 @@ pids
 *.seed
 *.pid.lock
 
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional stylelint cache
-.stylelintcache
 
 # Microbundle cache
 .rpt2_cache/

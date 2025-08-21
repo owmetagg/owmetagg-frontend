@@ -72,7 +72,11 @@ export function Navbar({
 
   // Handle navigation
   const handleNavigation = (sectionId: string) => {
-    onNavigate?.(sectionId);
+    if (sectionId === 'hero-stats') {
+      window.location.href = '/hero-stats';
+    } else {
+      onNavigate?.(sectionId);
+    }
     setIsMobileMenuOpen(false);
   };
 
