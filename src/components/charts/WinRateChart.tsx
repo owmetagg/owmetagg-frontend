@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { HeroWinRate, ROLE_COLORS } from '@/types';
 import { Trophy, ChevronRight, TrendingUp, TrendingDown } from 'lucide-react';
+import Image from 'next/image';
 
 interface WinRateChartProps {
   data: HeroWinRate[];
@@ -38,17 +40,22 @@ const itemVariants = {
 // Fallback hero portrait
 const DEFAULT_HERO_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHZpZXdCb3g9IjAgMCA2NCA2NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSIjMUYyOTM3Ii8+CjxjaXJjbGUgY3g9IjMyIiBjeT0iMjgiIHI9IjEyIiBmaWxsPSIjNDc1NTY5Ii8+CjxwYXRoIGQ9Ik0xNiA1MkMxNiA0My4xNjM0IDIzLjE2MzQgMzYgMzIgMzZDNDAuODM2NiAzNiA0OCA0My4xNjM0IDQ4IDUyVjY0SDE2VjUyWiIgZmlsbD0iIzQ3NTU2OSIvPgo8L3N2Zz4=';
 
-// Generate hero portrait URL
-const getHeroPortrait = (heroName: string): string => {
-  // Convert hero name to URL-friendly format
-  const formattedName = heroName.toLowerCase()
-    .replace(/[:\s]/g, '-')
-    .replace(/\./g, '')
-    .replace(/ú/g, 'u')
-    .replace(/ö/g, 'o');
-  
-  // Use OverFast API CDN for hero portraits
-  return `https://overfast-api.tekrop.fr/heroes/${formattedName}/portrait`;
+// Hero data interface from OverFast API
+interface HeroData {
+  key: string;
+  name: string;
+  portrait: string;
+  role: string;
+}
+
+// Get role color for badges
+const getRoleColor = (role: string) => {
+  switch (role.toLowerCase()) {
+    case 'tank': return 'bg-blue-100 text-blue-800 border-blue-200';
+    case 'damage': return 'bg-red-100 text-red-800 border-red-200';
+    case 'support': return 'bg-green-100 text-green-800 border-green-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
 };
 
 // Get performance color and label
@@ -66,6 +73,40 @@ export function WinRateChart({
   limit = 5,
   onHeroClick 
 }: WinRateChartProps) {
+  const [heroPortraits, setHeroPortraits] = useState<Record<string, string>>({});
+  const [heroesLoading, setHeroesLoading] = useState(true);
+
+  // Fetch hero portraits from OverFast API
+  useEffect(() => {
+    const fetchHeroPortraits = async () => {
+      try {
+        const response = await fetch('https://overfast-api.tekrop.fr/heroes');
+        const heroes: HeroData[] = await response.json();
+        
+        const portraitMap: Record<string, string> = {};
+        heroes.forEach(hero => {
+          portraitMap[hero.name.toLowerCase()] = hero.portrait;
+          portraitMap[hero.key] = hero.portrait;
+        });
+        
+        setHeroPortraits(portraitMap);
+      } catch (error) {
+        console.error('Failed to fetch hero portraits:', error);
+      } finally {
+        setHeroesLoading(false);
+      }
+    };
+
+    fetchHeroPortraits();
+  }, []);
+
+  const getHeroPortraitUrl = (heroName: string): string => {
+    const lowerName = heroName.toLowerCase();
+    const keyName = lowerName.replace(/[:\s]/g, '-').replace(/\./g, '').replace(/ú/g, 'u').replace(/ö/g, 'o');
+    
+    return heroPortraits[lowerName] || heroPortraits[keyName] || DEFAULT_HERO_IMAGE;
+  };
+
   const chartData = useMemo(() => {
     if (!data?.length) return [];
     
@@ -74,12 +115,12 @@ export function WinRateChart({
       .slice(0, limit)
       .map((hero) => ({
         ...hero,
-        portrait: getHeroPortrait(hero.heroName),
+        portrait: getHeroPortraitUrl(hero.heroName),
         performance: getPerformance(hero.winRate),
       }));
-  }, [data, limit]);
+  }, [data, limit, heroPortraits]);
 
-  if (loading) {
+  if (loading || heroesLoading) {
     return (
       <Card className="h-full">
         <CardHeader>
@@ -163,12 +204,6 @@ export function WinRateChart({
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
         </CardTitle>
         
-        {/* Table header */}
-        <div className="grid grid-cols-[1fr,100px,100px] gap-4 mt-4 pb-2 border-b text-xs font-medium text-muted-foreground uppercase tracking-wider">
-          <div>Hero</div>
-          <div className="text-center">Win Rate</div>
-          <div className="text-center">Performance</div>
-        </div>
       </CardHeader>
       
       <CardContent className="pt-0">
@@ -188,63 +223,71 @@ export function WinRateChart({
                 className="group relative rounded-lg transition-all duration-200 hover:bg-accent/50 cursor-pointer"
                 onClick={() => onHeroClick?.(hero.heroName.toLowerCase().replace(/[:\s]/g, '-'))}
               >
-                <div className="grid grid-cols-[1fr,100px,100px] gap-4 items-center p-3">
-                  {/* Hero info */}
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div 
-                        className="absolute inset-0 rounded-md opacity-20"
-                        style={{ backgroundColor: ROLE_COLORS[hero.role] }}
-                      />
-                      <img
-                        src={hero.portrait}
-                        alt={hero.heroName}
-                        className="relative h-12 w-12 rounded-md object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = DEFAULT_HERO_IMAGE;
-                        }}
-                      />
+                <div className="flex items-center justify-between p-3">
+                  {/* Hero info with inline stats */}
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="relative w-12 h-12 overflow-hidden rounded-lg flex-shrink-0">
+                      {hero.portrait ? (
+                        <Image
+                          src={hero.portrait}
+                          alt={hero.heroName}
+                          width={48}
+                          height={48}
+                          className="object-cover"
+                          unoptimized
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = DEFAULT_HERO_IMAGE;
+                          }}
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                          {hero.heroName.charAt(0)}
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <p className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                        {hero.heroName}
-                      </p>
-                      <p className="text-xs text-muted-foreground capitalize">
-                        {hero.role.toLowerCase()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Win Rate */}
-                  <div className="text-center">
-                    <div className="space-y-1">
-                      <p className={`font-mono text-sm font-medium ${
-                        hero.winRate >= 52 ? 'text-green-500' : 
-                        hero.winRate >= 48 ? 'text-yellow-500' : 
-                        'text-red-500'
-                      }`}>
-                        {hero.winRate.toFixed(2)}%
-                      </p>
-                      <ProgressBar
-                        value={hero.winRate - 40} // Adjust for 40-60% range display
-                        color="green"
-                        maxValue={20} // 60-40 = 20% range
-                        showValue={false}
-                        animated={true}
-                        delay={index * 0.1}
-                        className="!gap-0"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Performance indicator */}
-                  <div className="text-center">
-                    <div className={`inline-flex items-center gap-1 ${hero.performance.color}`}>
-                      {PerformanceIcon && <PerformanceIcon className="h-4 w-4" />}
-                      <span className="text-xs font-medium">
-                        {hero.performance.label}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-gray-900 group-hover:text-primary transition-colors leading-tight mb-1">
+                            {hero.heroName}
+                          </div>
+                          <Badge className={`text-xs ${getRoleColor(hero.role)} w-fit`}>
+                            {hero.role.charAt(0).toUpperCase() + hero.role.slice(1)}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center space-x-6 ml-4">
+                          {/* Win Rate */}
+                          <div className="text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="mb-1 font-medium text-gray-900 text-sm">
+                                {hero.winRate.toFixed(1)}%
+                              </span>
+                              <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                                <motion.div
+                                  className="h-full bg-green-500 opacity-60 rounded-full"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${((hero.winRate - 40) / 20) * 100}%` }}
+                                  transition={{ 
+                                    duration: 0.8, 
+                                    delay: index * 0.05,
+                                    ease: "easeOut"
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          {/* Performance indicator */}
+                          <div className="text-center">
+                            <div className={`inline-flex items-center gap-1 ${hero.performance.color}`}>
+                              {PerformanceIcon && <PerformanceIcon className="h-3 w-3" />}
+                              <span className="text-xs font-medium">
+                                {hero.performance.label}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

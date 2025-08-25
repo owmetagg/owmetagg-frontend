@@ -14,11 +14,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { playerRankStorage, RankTierData, SeasonStats } from '@/lib/playerRankStorage';
+import { RankDistribution, Rank } from '@/types';
 
 interface RankDistributionChartProps {
   loading?: boolean;
   error?: string;
   triggerUpdate?: number; // Used to trigger refresh when new players are searched
+  mockData?: RankDistribution[]; // Mock rank distribution data
 }
 
 const containerVariants = {
@@ -123,10 +125,40 @@ const CustomXAxisTick = ({ x, y, payload }: TickProps) => {
   );
 };
 
+// Convert mock RankDistribution data to RankTierData format
+const convertMockDataToChartData = (mockData: RankDistribution[]): RankTierData[] => {
+  const rankColors: Record<string, string> = {
+    'bronze': '#CD7F32',
+    'silver': '#C0C0C0',
+    'gold': '#FFD700',
+    'platinum': '#E5E4E2',
+    'diamond': '#B9F2FF',
+    'master': '#FF8C00',
+    'grandmaster': '#FF6B6B',
+    'top 500': '#FF00FF'
+  };
+
+  return mockData.map((item, index) => {
+    const rankName = item.rank.toLowerCase().replace('_', ' ');
+    const displayName = rankName.charAt(0).toUpperCase() + rankName.slice(1);
+    
+    return {
+      rank: displayName,
+      apiRank: rankName,
+      tier: 3, // Default tier for mock data
+      count: item.playerCount,
+      percentage: item.percentage,
+      fill: rankColors[rankName] || '#666666',
+      tierDisplay: `${displayName} 3`
+    };
+  });
+};
+
 export function RankDistributionChart({ 
   loading = false, 
   error, 
-  triggerUpdate 
+  triggerUpdate,
+  mockData 
 }: RankDistributionChartProps) {
   const [selectedSeason, setSelectedSeason] = useState<number>(playerRankStorage.getCurrentSeason());
   const [availableSeasons, setAvailableSeasons] = useState<number[]>([]);
@@ -139,16 +171,35 @@ export function RankDistributionChart({
   }, [triggerUpdate]);
 
   // Generate chart data and stats for selected season
-  const { chartData, hasDataForSeason } = useMemo(() => {
-    const data = playerRankStorage.generateDistributionData(selectedSeason);
+  const { chartData, hasDataForSeason, usingMockData } = useMemo(() => {
+    const playerData = playerRankStorage.generateDistributionData(selectedSeason);
     const stats = playerRankStorage.getSeasonStats(selectedSeason);
     setSeasonStats(stats);
     
+    // If no player data is available and we have mock data, use it
+    if (playerData.length === 0 && mockData && mockData.length > 0) {
+      const mockChartData = convertMockDataToChartData(mockData);
+      const mockStats: SeasonStats = {
+        totalEntries: mockData.reduce((sum, item) => sum + item.playerCount, 0),
+        uniquePlayers: mockData.reduce((sum, item) => sum + item.playerCount, 0),
+        rolesTracked: ['tank', 'damage', 'support'],
+        dateRange: null
+      };
+      setSeasonStats(mockStats);
+      
+      return {
+        chartData: mockChartData,
+        hasDataForSeason: true,
+        usingMockData: true
+      };
+    }
+    
     return {
-      chartData: data,
-      hasDataForSeason: data.length > 0
+      chartData: playerData,
+      hasDataForSeason: playerData.length > 0,
+      usingMockData: false
     };
-  }, [selectedSeason, triggerUpdate]); // triggerUpdate is needed to refresh when new data is added
+  }, [selectedSeason, triggerUpdate, mockData]); // triggerUpdate is needed to refresh when new data is added
 
   const handleSeasonChange = (value: string) => {
     setSelectedSeason(parseInt(value));
@@ -209,7 +260,10 @@ export function RankDistributionChart({
               <span>Competitive Rank Distribution</span>
             </CardTitle>
             <CardDescription>
-              Season {selectedSeason} rank distribution from searched players
+              {usingMockData 
+                ? `Season ${selectedSeason} competitive rank distribution (Global data)`
+                : `Season ${selectedSeason} rank distribution from searched players`
+              }
               {selectedSeason === playerRankStorage.getCurrentSeason() && ' (Current)'}
             </CardDescription>
           </div>
@@ -254,7 +308,7 @@ export function RankDistributionChart({
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center justify-center h-[300px] text-center"
+            className="flex flex-col items-center justify-center h-[350px] text-center"
           >
             <Search className="h-12 w-12 text-muted-foreground mb-3" />
             <h3 className="text-lg font-semibold mb-2">No Season {selectedSeason} Data</h3>
@@ -300,7 +354,7 @@ export function RankDistributionChart({
             </motion.div>
             
             {/* Chart */}
-            <motion.div variants={itemVariants} className="h-[300px]">
+            <motion.div variants={itemVariants} className="h-[400px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={chartData}
