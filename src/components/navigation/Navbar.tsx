@@ -80,6 +80,17 @@ export function Navbar({
     setIsMobileMenuOpen(false);
   };
 
+  // Handle logo/home button click
+  const handleLogoClick = () => {
+    if (activeSection === 'meta-stats') {
+      // Already on home page, scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      // Navigate to home page
+      handleNavigation('meta-stats');
+    }
+  };
+
   // Handle click outside search dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -109,32 +120,34 @@ export function Navbar({
     >
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
-          {/* Logo Section */}
-          <motion.div 
-            className="flex items-center gap-3"
-            whileHover={{ scale: 1.02 }}
+      {/* Logo Section - Interactive Button */}
+      <motion.button 
+        className="flex items-center gap-3 cursor-pointer group"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        onClick={handleLogoClick}
+      >
+        <div 
+          className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg transition-all duration-200 group-hover:shadow-lg"
+          style={{ 
+            background: `linear-gradient(135deg, ${OVERWATCH_COLORS.primary}40, ${OVERWATCH_COLORS.secondary}40)`,
+            color: OVERWATCH_COLORS.primary
+          }}
+        >
+          OW
+        </div>
+        <div className="hidden sm:block">
+          <h1 
+            className="text-xl font-bold tracking-tight group-hover:opacity-80 transition-opacity"
+            style={{ color: OVERWATCH_COLORS.primary }}
           >
-            <div 
-              className="w-10 h-10 rounded-lg flex items-center justify-center font-bold text-lg"
-              style={{ 
-                background: `linear-gradient(135deg, ${OVERWATCH_COLORS.primary}40, ${OVERWATCH_COLORS.secondary}40)`,
-                color: OVERWATCH_COLORS.primary
-              }}
-            >
-              OW
-            </div>
-            <div className="hidden sm:block">
-              <h1 
-                className="text-xl font-bold tracking-tight"
-                style={{ color: OVERWATCH_COLORS.primary }}
-              >
-                MetaGG
-              </h1>
-              <p className="text-xs text-muted-foreground">
-                Overwatch Analytics
-              </p>
-            </div>
-          </motion.div>
+            MetaGG
+          </h1>
+          <p className="text-xs text-muted-foreground group-hover:opacity-80 transition-opacity">
+            Overwatch Analytics
+          </p>
+        </div>
+      </motion.button>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center gap-1">
