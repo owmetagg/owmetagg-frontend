@@ -118,6 +118,7 @@ export default function Dashboard() {
   });
 
   const {
+    data: rankDistributionData,
     isLoading: rankDistributionLoading,
     error: rankDistributionError,
   } = useQuery({
@@ -349,6 +350,7 @@ export default function Dashboard() {
               loading={rankDistributionLoading}
               error={rankDistributionError?.message}
               triggerUpdate={rankDataUpdated}
+              mockData={rankDistributionData}
             />
           </motion.div>
         </motion.section>
