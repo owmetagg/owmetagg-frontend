@@ -223,7 +223,9 @@ export function TrendsChart({ data, loading = false, error, limit = 6 }: TrendsC
             {trendSummary.map((hero) => (
               <div key={hero.heroName} className="flex items-center gap-2">
                 {getTrendIcon(hero.trend)}
-                <span className="font-medium" style={{ color: hero.color }}>
+                <span className={`font-medium ${
+                  hero.change > 0 ? 'text-green-500' : hero.change < 0 ? 'text-red-500' : 'text-gray-500'
+                }`}>
                   {hero.heroName}
                 </span>
                 <span className={`ml-auto font-mono ${

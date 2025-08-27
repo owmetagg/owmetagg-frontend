@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { AlertCircle, Gamepad2 } from 'lucide-react';
+import { AlertCircle, Gamepad2, Users, Shield, Zap, Heart } from 'lucide-react';
 
 // Components
 import { Navbar } from '@/components/navigation/Navbar';
@@ -58,13 +58,20 @@ export default function Dashboard() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [rankDataUpdated, setRankDataUpdated] = useState(0);
 
-  // Load search history from localStorage
+  // Load search history from localStorage and check for navigation from other pages
   useEffect(() => {
     try {
       const stored = localStorage.getItem('owmeta-search-history');
       if (stored) {
         const history = JSON.parse(stored) as SearchHistory[];
         setSearchHistory(history.slice(0, 5));
+      }
+      
+      // Check if we were redirected here from another page with a specific section
+      const intendedSection = sessionStorage.getItem('owmeta-active-section');
+      if (intendedSection) {
+        setActiveSection(intendedSection);
+        sessionStorage.removeItem('owmeta-active-section'); // Clean up
       }
     } catch (error) {
       console.error('Failed to load search history:', error);
@@ -312,47 +319,127 @@ export default function Dashboard() {
 
         {/* Main Analytics Section */}
         <motion.section variants={itemVariants} className="space-y-8">
-          {/* Three Horizontal Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <motion.div variants={itemVariants}>
-              <PickRateChart
-                data={pickRatesData || []}
-                loading={pickRatesLoading}
-                error={pickRatesError?.message}
-                limit={5}
-                onHeroClick={handleHeroClick}
-              />
-            </motion.div>
+          {activeSection === 'role-stats' ? (
+            /* Role Statistics Content */
+            <div className="space-y-8">
+              <motion.div variants={itemVariants} className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+                  <Users className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-semibold mb-2">Role Statistics</h3>
+                <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
+                  Analyze performance metrics across Tank, Damage, and Support roles. 
+                  Compare role effectiveness, pick rates, and meta trends.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                  <Card className="p-6 bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20">
+                    <div className="text-center">
+                      <div className="w-12 h-12 rounded-full bg-red-500/20 mx-auto mb-3 flex items-center justify-center">
+                        <Shield className="h-6 w-6 text-red-500" />
+                      </div>
+                      <h4 className="font-semibold text-lg">Tank</h4>
+                      <p className="text-sm text-muted-foreground mt-1">Frontline defenders and space creators</p>
+                      <div className="mt-4 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Pick Rate:</span>
+                          <span className="font-medium">32.4%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Win Rate:</span>
+                          <span className="font-medium">52.1%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-6 bg-gradient-to-br from-orange-500/10 to-orange-600/5 border-orange-500/20">
+                    <div className="text-center">
+                      <div className="w-12 h-12 rounded-full bg-orange-500/20 mx-auto mb-3 flex items-center justify-center">
+                        <Zap className="h-6 w-6 text-orange-500" />
+                      </div>
+                      <h4 className="font-semibold text-lg">Damage</h4>
+                      <p className="text-sm text-muted-foreground mt-1">High-impact elimination specialists</p>
+                      <div className="mt-4 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Pick Rate:</span>
+                          <span className="font-medium">45.7%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Win Rate:</span>
+                          <span className="font-medium">48.9%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                  
+                  <Card className="p-6 bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
+                    <div className="text-center">
+                      <div className="w-12 h-12 rounded-full bg-blue-500/20 mx-auto mb-3 flex items-center justify-center">
+                        <Heart className="h-6 w-6 text-blue-500" />
+                      </div>
+                      <h4 className="font-semibold text-lg">Support</h4>
+                      <p className="text-sm text-muted-foreground mt-1">Team enablers and sustain providers</p>
+                      <div className="mt-4 space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>Pick Rate:</span>
+                          <span className="font-medium">21.9%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Win Rate:</span>
+                          <span className="font-medium">53.6%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                </div>
+              </motion.div>
+            </div>
+          ) : (
+            /* Default Meta Statistics Content */
+            <>
+              {/* Three Horizontal Charts */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <motion.div variants={itemVariants}>
+                  <PickRateChart
+                    data={pickRatesData || []}
+                    loading={pickRatesLoading}
+                    error={pickRatesError?.message}
+                    limit={5}
+                    onHeroClick={handleHeroClick}
+                  />
+                </motion.div>
 
-            <motion.div variants={itemVariants}>
-              <WinRateChart
-                data={winRatesData || []}
-                loading={winRatesLoading}
-                error={winRatesError?.message}
-                limit={5}
-                onHeroClick={handleHeroClick}
-              />
-            </motion.div>
+                <motion.div variants={itemVariants}>
+                  <WinRateChart
+                    data={winRatesData || []}
+                    loading={winRatesLoading}
+                    error={winRatesError?.message}
+                    limit={5}
+                    onHeroClick={handleHeroClick}
+                  />
+                </motion.div>
 
-            <motion.div variants={itemVariants}>
-              <TrendsChart
-                data={trendsData || []}
-                loading={trendsLoading}
-                error={trendsError?.message}
-                limit={6}
-              />
-            </motion.div>
-          </div>
+                <motion.div variants={itemVariants}>
+                  <TrendsChart
+                    data={trendsData || []}
+                    loading={trendsLoading}
+                    error={trendsError?.message}
+                    limit={6}
+                  />
+                </motion.div>
+              </div>
 
-          {/* Rank Distribution Chart - Full Width */}
-          <motion.div variants={itemVariants}>
-            <RankDistributionChart
-              loading={rankDistributionLoading}
-              error={rankDistributionError?.message}
-              triggerUpdate={rankDataUpdated}
-              mockData={rankDistributionData}
-            />
-          </motion.div>
+              {/* Rank Distribution Chart - Full Width */}
+              <motion.div variants={itemVariants}>
+                <RankDistributionChart
+                  loading={rankDistributionLoading}
+                  error={rankDistributionError?.message}
+                  triggerUpdate={rankDataUpdated}
+                  mockData={rankDistributionData}
+                />
+              </motion.div>
+            </>
+          )}
         </motion.section>
 
         {/* Footer */}

@@ -51,10 +51,10 @@ interface HeroData {
 // Get role color for badges
 const getRoleColor = (role: string) => {
   switch (role.toLowerCase()) {
-    case 'tank': return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'damage': return 'bg-red-100 text-red-800 border-red-200';
-    case 'support': return 'bg-green-100 text-green-800 border-green-200';
-    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    case 'tank': return 'bg-blue-600 text-white border-blue-500';
+    case 'damage': return 'bg-red-600 text-white border-red-500';
+    case 'support': return 'bg-green-600 text-white border-green-500';
+    default: return 'bg-gray-600 text-white border-gray-500';
   }
 };
 
@@ -226,7 +226,7 @@ export function WinRateChart({
                 <div className="flex items-center justify-between p-3">
                   {/* Hero info with inline stats */}
                   <div className="flex items-center space-x-4 flex-1">
-                    <div className="relative w-12 h-12 overflow-hidden rounded-lg flex-shrink-0">
+                    <div className="relative w-12 h-12 overflow-hidden rounded-lg flex-shrink-0 bg-gray-600">
                       {hero.portrait ? (
                         <Image
                           src={hero.portrait}
@@ -249,7 +249,7 @@ export function WinRateChart({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="font-semibold text-gray-900 group-hover:text-primary transition-colors leading-tight mb-1">
+                          <div className="font-semibold text-white group-hover:text-primary transition-colors leading-tight mb-1">
                             {hero.heroName}
                           </div>
                           <Badge className={`text-xs ${getRoleColor(hero.role)} w-fit`}>
@@ -260,7 +260,7 @@ export function WinRateChart({
                           {/* Win Rate */}
                           <div className="text-center">
                             <div className="flex flex-col items-center">
-                              <span className="mb-1 font-medium text-gray-900 text-sm">
+                              <span className="mb-1 font-medium text-white text-sm">
                                 {hero.winRate.toFixed(1)}%
                               </span>
                               <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden">

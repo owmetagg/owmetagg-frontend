@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, ChevronUp, ChevronDown, ChevronsUpDown, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
 import { Navbar } from '@/components/navigation/Navbar';
@@ -78,11 +79,27 @@ const formatValue = (key: string, value: number) => {
 
 const getRoleColor = (role: string) => {
   switch (role.toLowerCase()) {
-    case 'tank': return 'bg-blue-100 text-blue-800 border-blue-200';
-    case 'damage': return 'bg-red-100 text-red-800 border-red-200';
-    case 'support': return 'bg-green-100 text-green-800 border-green-200';
-    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    case 'tank': return 'bg-blue-600 text-white border-blue-500';
+    case 'damage': return 'bg-red-600 text-white border-red-500';
+    case 'support': return 'bg-green-600 text-white border-green-500';
+    default: return 'bg-gray-600 text-white border-gray-500';
   }
+};
+
+const getPerformanceColor = (percentage: number): string => {
+  if (percentage >= 80) return 'bg-green-500'; // Top 20% - Green
+  if (percentage >= 60) return 'bg-lime-500';  // Top 40% - Light Green
+  if (percentage >= 40) return 'bg-yellow-500'; // Middle 20% - Yellow
+  if (percentage >= 20) return 'bg-orange-500'; // Bottom 40% - Orange
+  return 'bg-red-500'; // Bottom 20% - Red
+};
+
+const getTextColor = (percentage: number): string => {
+  if (percentage >= 80) return 'text-green-500'; // Top 20% - Green
+  if (percentage >= 60) return 'text-lime-500';  // Top 40% - Light Green
+  if (percentage >= 40) return 'text-yellow-500'; // Middle 20% - Yellow
+  if (percentage >= 20) return 'text-orange-500'; // Bottom 40% - Orange
+  return 'text-red-500'; // Bottom 20% - Red
 };
 
 const getProgressBarColor = (column: string) => {
@@ -110,13 +127,16 @@ interface ProgressBarProps {
   percentage: number;
   color: string;
   delay?: number;
+  performancePercentage?: number;
 }
 
-const ProgressBar = ({ percentage, color, delay = 0 }: ProgressBarProps) => {
+const ProgressBar = ({ percentage, color, delay = 0, performancePercentage }: ProgressBarProps) => {
+  const dynamicColor = performancePercentage !== undefined ? getPerformanceColor(performancePercentage) : color;
+  
   return (
     <div className="w-full h-1.5 bg-gray-200 rounded-full mt-1 overflow-hidden">
       <motion.div
-        className={`h-full ${color} opacity-60 rounded-full`}
+        className={`h-full ${dynamicColor} opacity-80 rounded-full`}
         initial={{ width: 0 }}
         animate={{ width: `${percentage}%` }}
         transition={{ 
@@ -134,9 +154,10 @@ interface HeroStatsTableProps {
   columns: string[];
   sortConfig: SortConfig;
   onSort: (column: string) => void;
+  onHeroClick: (hero: HeroStatsData) => void;
 }
 
-const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTableProps) => {
+const HeroStatsTable = ({ data, columns, sortConfig, onSort, onHeroClick }: HeroStatsTableProps) => {
   const getSortIcon = (column: string) => {
     if (sortConfig.column !== column) {
       return <ChevronsUpDown className="h-4 w-4 text-gray-400" />;
@@ -181,17 +202,17 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
     return percentageMap;
   };
   return (
-    <div className="bg-white rounded-lg border overflow-hidden">
+    <div className="bg-card rounded-lg border overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted border-b">
             <tr>
-              <th className="text-left py-4 px-6 font-medium text-gray-900 w-64">Hero</th>
+              <th className="text-left py-4 px-6 font-medium text-white w-64">Hero</th>
               {columns.map(col => (
-                <th key={col} className="text-center py-4 px-8 font-medium text-gray-900 min-w-[120px]">
+                <th key={col} className="text-center py-4 px-8 font-medium text-white min-w-[120px]">
                   <button
                     onClick={() => onSort(col)}
-                    className="flex items-center justify-center gap-1 w-full hover:text-gray-700 transition-colors"
+                    className="flex items-center justify-center gap-1 w-full hover:text-gray-300 transition-colors"
                   >
                     {columnLabels[col]}
                     {getSortIcon(col)}
@@ -203,7 +224,7 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
           <tbody>
             {data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length + 1} className="text-center py-12 text-gray-500">
+                <td colSpan={columns.length + 1} className="text-center py-12 text-muted-foreground">
                   No heroes found matching the current filters.
                 </td>
               </tr>
@@ -214,11 +235,12 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.02 }}
-                  className="border-b hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => onHeroClick(hero)}
                 >
                   <td className="py-4 px-6">
                     <div className="flex items-center space-x-4">
-                      <div className="relative w-12 h-12 overflow-hidden rounded-lg">
+                      <div className="relative w-12 h-12 overflow-hidden rounded-lg bg-gray-600">
                         {hero.portrait ? (
                           <Image
                             src={hero.portrait}
@@ -235,7 +257,7 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
                         )}
                       </div>
                       <div>
-                        <div className="font-semibold text-gray-900">{hero.heroName}</div>
+                        <div className="font-semibold text-white">{hero.heroName}</div>
                         <Badge className={`text-xs ${getRoleColor(hero.role)}`}>
                           {hero.role.charAt(0).toUpperCase() + hero.role.slice(1)}
                         </Badge>
@@ -246,11 +268,12 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
                     const percentages = getColumnPercentages(col);
                     const percentage = percentages.get(hero.heroKey) || 0;
                     const barColor = getProgressBarColor(col);
+                    const textColor = getTextColor(percentage);
                     
                     return (
-                      <td key={col} className="text-center py-4 px-8 text-gray-900 font-medium">
+                      <td key={col} className="text-center py-4 px-8 font-medium">
                         <div className="flex flex-col items-center">
-                          <span className="mb-1">
+                          <span className={`mb-1 ${textColor}`}>
                             {formatValue(col, hero[col as keyof HeroStatsData] as number)}
                           </span>
                           <div className="w-full max-w-[80px]">
@@ -258,6 +281,7 @@ const HeroStatsTable = ({ data, columns, sortConfig, onSort }: HeroStatsTablePro
                               percentage={percentage}
                               color={barColor}
                               delay={index * 0.05}
+                              performancePercentage={percentage}
                             />
                           </div>
                         </div>
@@ -309,6 +333,10 @@ const HeroStatsPage = () => {
   const [activeSection, setActiveSection] = useState('hero-stats');
   const [isSearching, setIsSearching] = useState(false);
   const [searchHistory, setSearchHistory] = useState<SearchHistory[]>([]);
+  
+  // Modal state
+  const [selectedHero, setSelectedHero] = useState<HeroStatsData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Load search history from localStorage
   useEffect(() => {
@@ -325,7 +353,11 @@ const HeroStatsPage = () => {
 
   // Navbar handlers
   const handleNavigation = (sectionId: string) => {
-    if (sectionId === 'meta-stats') {
+    if (sectionId === 'meta-stats' || sectionId === 'role-stats') {
+      // Store the intended section in sessionStorage so the main page can read it
+      if (sectionId === 'role-stats') {
+        sessionStorage.setItem('owmeta-active-section', 'role-stats');
+      }
       window.location.href = '/';
     } else {
       setActiveSection(sectionId);
@@ -344,6 +376,17 @@ const HeroStatsPage = () => {
   const clearSearchHistory = () => {
     setSearchHistory([]);
     localStorage.removeItem('owmeta-search-history');
+  };
+
+  // Hero modal handlers
+  const handleHeroClick = (hero: HeroStatsData) => {
+    setSelectedHero(hero);
+    setIsModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setIsModalOpen(false);
+    setSelectedHero(null);
   };
 
   // Sorting handler
@@ -449,7 +492,7 @@ const HeroStatsPage = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Hero Statistics</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Hero Statistics</h1>
         </div>
 
         {/* Filters Section */}
@@ -461,7 +504,7 @@ const HeroStatsPage = () => {
             <div className="flex flex-row flex-wrap gap-2">
               {/* Platform Filter */}
               <div className="flex flex-col flex-nowrap justify-start items-start">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Platform</label>
+                <label className="text-sm font-medium text-white mb-2 block">Platform</label>
                 <ToggleGroup 
                   type="single" 
                   value={filters.platform} 
@@ -479,7 +522,7 @@ const HeroStatsPage = () => {
 
               {/* Game Mode Filter */}
               <div className="flex flex-col flex-nowrap justify-start items-start min-w-[200px]">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">Game Mode</label>
+                <label className="text-sm font-medium text-white mb-2 block">Game Mode</label>
                 <ToggleGroup 
                   type="single" 
                   value={filters.gamemode} 
@@ -502,7 +545,7 @@ const HeroStatsPage = () => {
               <div className="flex flex-row flex-wrap gap-1">
                 {/* Role Filter */}
                 <div className="flex flex-col flex-nowrap justify-start items-start min-w-[120px]">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Role</label>
+                  <label className="text-sm font-medium text-white mb-2 block">Role</label>
                   <Select value={filters.role} onValueChange={(value) => handleFilterChange('role', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -518,7 +561,7 @@ const HeroStatsPage = () => {
 
                 {/* Rank Filter - Always show but disable when not competitive */}
                 <div className="flex flex-col flex-nowrap justify-start items-start min-w-[130px]">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Rank</label>
+                  <label className="text-sm font-medium text-white mb-2 block">Rank</label>
                   <Select 
                     value={filters.rank} 
                     onValueChange={(value) => handleFilterChange('rank', value)}
@@ -543,7 +586,7 @@ const HeroStatsPage = () => {
 
                 {/* Time Span Filter */}
                 <div className="flex flex-col flex-nowrap justify-start items-start min-w-[140px]">
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Time Span</label>
+                  <label className="text-sm font-medium text-white mb-2 block">Time Span</label>
                   <Select value={filters.timespan} onValueChange={(value) => handleFilterChange('timespan', value)}>
                     <SelectTrigger>
                       <SelectValue />
@@ -575,17 +618,17 @@ const HeroStatsPage = () => {
                 type="single" 
                 value={activeTab} 
                 onValueChange={(value) => value && setActiveTab(value)}
-                className="bg-gray-100 p-1 rounded-lg"
+                className="bg-muted p-1 rounded-lg"
               >
                 <ToggleGroupItem 
                   value="overview" 
-                  className="px-6 py-2 data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                  className="px-6 py-2 text-white data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm hover:text-gray-300"
                 >
                   Overview
                 </ToggleGroupItem>
                 <ToggleGroupItem 
                   value="advanced" 
-                  className="px-6 py-2 data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                  className="px-6 py-2 text-white data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:shadow-sm hover:text-gray-300"
                 >
                   Advanced
                 </ToggleGroupItem>
@@ -607,6 +650,7 @@ const HeroStatsPage = () => {
                     columns={['pickRate', 'winRate', 'kda']}
                     sortConfig={sortConfig}
                     onSort={handleSort}
+                    onHeroClick={handleHeroClick}
                   />
                 )}
 
@@ -616,6 +660,7 @@ const HeroStatsPage = () => {
                     columns={['elimsPer10', 'damagePer10', 'objKillsPer10', 'objTimePer10', 'healingPer10']}
                     sortConfig={sortConfig}
                     onSort={handleSort}
+                    onHeroClick={handleHeroClick}
                   />
                 )}
               </div>
@@ -623,6 +668,123 @@ const HeroStatsPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Hero Details Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={closeModal}>
+          <Card className="w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3 justify-between">
+                <div className="flex items-center gap-3">
+              {selectedHero && (
+                <>
+                  <div className="relative w-16 h-16 overflow-hidden rounded-lg bg-gray-600">
+                    {selectedHero.portrait ? (
+                      <Image
+                        src={selectedHero.portrait}
+                        alt={selectedHero.heroName}
+                        width={64}
+                        height={64}
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center text-white font-bold text-2xl">
+                        {selectedHero.heroName.charAt(0)}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold">{selectedHero.heroName}</h3>
+                    <Badge className={`text-xs ${getRoleColor(selectedHero.role)}`}>
+                      {selectedHero.role.charAt(0).toUpperCase() + selectedHero.role.slice(1)}
+                    </Badge>
+                  </div>
+                </>
+              )}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={closeModal}
+                  className="p-1 h-8 w-8"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+          {selectedHero && (
+            <div className="space-y-4">
+              {/* Quick Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-500">
+                    {selectedHero.winRate.toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">Win Rate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-yellow-500">
+                    {selectedHero.pickRate.toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-muted-foreground">Pick Rate</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-500">
+                    {selectedHero.kda.toFixed(1)}
+                  </div>
+                  <div className="text-sm text-muted-foreground">KDA</div>
+                </div>
+              </div>
+              
+              {/* Detailed Stats */}
+              <div className="space-y-3">
+                <h4 className="font-semibold text-white">Performance Metrics</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Eliminations per 10min:</span>
+                    <span className="font-medium text-white">{selectedHero.elimsPer10.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Damage per 10min:</span>
+                    <span className="font-medium text-white">{Math.round(selectedHero.damagePer10).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Objective Kills per 10min:</span>
+                    <span className="font-medium text-white">{selectedHero.objKillsPer10.toFixed(1)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Objective Time per 10min:</span>
+                    <span className="font-medium text-white">
+                      {Math.floor(selectedHero.objTimePer10 / 60)}:{String(Math.floor(selectedHero.objTimePer10 % 60)).padStart(2, '0')}
+                    </span>
+                  </div>
+                  {selectedHero.healingPer10 > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Healing per 10min:</span>
+                      <span className="font-medium text-white">{Math.round(selectedHero.healingPer10).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Games Played:</span>
+                    <span className="font-medium text-white">{selectedHero.gamesPlayed.toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Close Button */}
+              <div className="flex justify-end pt-4">
+                <Button onClick={closeModal} variant="outline">
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
